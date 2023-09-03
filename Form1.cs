@@ -11,7 +11,7 @@ namespace IoTRobotWorld_mobile_robot_simulator
     {
         public delegate void ShowMessage(string message);
         public ShowMessage myDelegate;
-
+        public ShowMessage myDelegateLog;
 
         UdpClient udpClient;
         Thread thread;
@@ -20,14 +20,22 @@ namespace IoTRobotWorld_mobile_robot_simulator
 
         public Form1()
         {
-            myDelegate = new ShowMessage(TestDelegate);
+            myDelegate = new ShowMessage(ParseDelegate);
+            myDelegateLog = new ShowMessage(LogDelegate);
+
             InitializeComponent();
         }
-        int a = 0;
-        private void TestDelegate(string message)
+        private void LogDelegate(string s)
         {
-            a++;
-            label3.Text = a.ToString() + " " + message;
+            if (listBox1.Items.Count > 200) listBox1.Items.Clear();
+
+            listBox1.Items.Add(s);
+            listBox1.SelectedIndex = listBox1.Items.Count - 1;
+            listBox1.SelectedIndex = -1;
+        }
+        private void ParseDelegate(string message)
+        {
+
         }
         private void button1_Click(object sender, EventArgs e)
         {
@@ -42,7 +50,7 @@ namespace IoTRobotWorld_mobile_robot_simulator
                     udpClient = new UdpClient(portIN);
                     thread = new Thread(new ThreadStart(ReceiveMessage));
                     thread.Start();
-
+                    myDelegateLog("Сервер запущен");
                 }
                 else
                 {
@@ -68,17 +76,16 @@ namespace IoTRobotWorld_mobile_robot_simulator
                     if (content.Length > 0)
                     {
                         string message = Encoding.ASCII.GetString(content);
-                        Invoke(myDelegate, new object[] { message });
+                        Invoke(myDelegateLog, new object[] { ">" + message });
                     }
                 }
                 catch
                 {
-                    string errmessage = "RemoteHost lost";
-                    Invoke(myDelegate, new object[] { errmessage });
+                    Invoke(myDelegateLog, new object[] { "Нет подключения" });
                 }
             }
         }
-        private void SendMessage(string s)
+        private void SendMessage(string s)  // Где-то добавть \n для отправки json
         {
             if (udpClient != null)
             {
@@ -88,10 +95,11 @@ namespace IoTRobotWorld_mobile_robot_simulator
                 try
                 {
                     int count = udpClient.Send(content, content.Length, ipEndPoint);
+                    Invoke(myDelegateLog, new object[] { "<" + s });
                 }
                 catch
                 {
-
+                    Invoke(myDelegateLog, new object[] { "Ошибка отправки" });
                 }
 
             }
