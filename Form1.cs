@@ -18,6 +18,7 @@ namespace IoTRobotWorld_mobile_robot_simulator
 
         int portIN, portOUT;
 
+        int[] NLeRe = new int[3];
         public Form1()
         {
             myDelegate = new ShowMessage(ParseDelegate);
@@ -35,6 +36,20 @@ namespace IoTRobotWorld_mobile_robot_simulator
         }
         private void ParseDelegate(string message)
         {
+            message = message.Replace("\"", "").Replace(" ", "");
+            string str;
+            for (int i = 30; i > 15; i--)
+            {
+                int indexStart = message.IndexOf(':');
+                int indexEnd = message.IndexOfAny(new char[] { ',', '}' });
+                str = message.Substring(indexStart + 1, indexEnd - indexStart - 1);
+                Controls[i].Text = str;
+                message = message.Remove(0, indexEnd + 1);
+            }
+ 
+            NLeRe[0] = int.Parse(Controls[30].Text);
+            NLeRe[1] = int.Parse(Controls[27].Text);
+            NLeRe[2] = int.Parse(Controls[26].Text);
 
         }
         private void button1_Click(object sender, EventArgs e)
@@ -70,13 +85,14 @@ namespace IoTRobotWorld_mobile_robot_simulator
             {
                 try
                 {
-
                     IPEndPoint remoteIPEndPoint = new IPEndPoint(IPAddress.Any, portIN);
                     byte[] content = udpClient.Receive(ref remoteIPEndPoint);
                     if (content.Length > 0)
                     {
                         string message = Encoding.ASCII.GetString(content);
                         Invoke(myDelegateLog, new object[] { ">" + message });
+                        Invoke(myDelegate, new object[] { message });
+
                     }
                 }
                 catch
@@ -85,16 +101,16 @@ namespace IoTRobotWorld_mobile_robot_simulator
                 }
             }
         }
-        private void SendMessage(string s)  // Где-то добавть \n для отправки json
+        private void SendMessage(string s)
         {
             if (udpClient != null)
             {
                 IPAddress ip = IPAddress.Parse("127.0.0.1");
                 IPEndPoint ipEndPoint = new IPEndPoint(ip, portOUT);
-                byte[] content = Encoding.ASCII.GetBytes(s);
+                byte[] content = Encoding.ASCII.GetBytes(s + "\n");
                 try
                 {
-                    int count = udpClient.Send(content, content.Length, ipEndPoint);
+                    udpClient.Send(content, content.Length, ipEndPoint);
                     Invoke(myDelegateLog, new object[] { "<" + s });
                 }
                 catch
