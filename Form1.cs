@@ -13,17 +13,21 @@ namespace IoTRobotWorld_mobile_robot_simulator
         public ShowMessage myDelegate;
         public ShowMessage myDelegateLog;
 
+        public delegate void StartPassing();
+        public StartPassing myDelegateStartPassing;
+
         UdpClient udpClient;
-        Thread thread;
+        Thread thread, threadPassingLab;
 
         int portIN, portOUT;
 
         int[] NLeRe = new int[3];
+        bool automaticSlalom = false;
         public Form1()
         {
             myDelegate = new ShowMessage(ParseDelegate);
             myDelegateLog = new ShowMessage(LogDelegate);
-
+            myDelegateStartPassing = new StartPassing(PassingLabyrinth);
             InitializeComponent();
         }
         private void LogDelegate(string s)
@@ -37,20 +41,99 @@ namespace IoTRobotWorld_mobile_robot_simulator
         private void ParseDelegate(string message)
         {
             message = message.Replace("\"", "").Replace(" ", "");
-            string str;
-            for (int i = 30; i > 15; i--)
+            if (String.IsNullOrWhiteSpace(message)) return;
+            for (int i = 31; i > 15; i--)
             {
                 int indexStart = message.IndexOf(':');
                 int indexEnd = message.IndexOfAny(new char[] { ',', '}' });
-                str = message.Substring(indexStart + 1, indexEnd - indexStart - 1);
-                Controls[i].Text = str;
+                if (indexEnd == -1 || indexStart == -1) break;
+                Controls[i].Text = message.Substring(indexStart + 1, indexEnd - indexStart - 1);
                 message = message.Remove(0, indexEnd + 1);
             }
- 
-            NLeRe[0] = int.Parse(Controls[30].Text);
+
+            NLeRe[0] = int.Parse(Controls[31].Text);
             NLeRe[1] = int.Parse(Controls[27].Text);
             NLeRe[2] = int.Parse(Controls[26].Text);
 
+            if (automaticSlalom)
+            {
+                automaticSlalom = false;
+                threadPassingLab?.Abort();
+                threadPassingLab = new Thread(new ThreadStart(PassingLabyrinth));
+                threadPassingLab.Start();
+            }
+
+        }
+        private void PassingLabyrinth()
+        {
+            TurnLeft();
+            Forward(1500);
+            TurnRight();
+            Forward(1600);
+            TurnRight();
+
+            Forward(3000);
+            TurnLeft();
+            Forward(1600);
+            TurnLeft();
+
+            Forward(3200);
+            TurnRight();
+            Forward(1000);
+            TurnRight();
+
+            Forward(3000);
+            TurnLeft();
+            Forward(1600);
+            TurnLeft();
+
+            Forward(3000);
+            TurnRight();
+            Forward(1000);
+            TurnRight();
+
+            Forward(3000);
+            TurnLeft();
+            Forward(1200);
+            TurnLeft();
+            Forward(1500);
+
+            JSONSendMessage();
+        }
+        private void Forward(int goal)
+        {
+            int current = NLeRe[1];
+            for (byte i = 0; i < 2; i++)
+                JSONSendMessage(100);
+
+            while (Math.Abs(NLeRe[1] - current) <= goal)
+            {
+
+            }
+        }
+        private void TurnLeft()
+        {
+            int goal = 700;
+            int current = NLeRe[1];
+            for (byte i = 0; i < 2; i++)
+                JSONSendMessage(0, 100);
+
+            while (Math.Abs(NLeRe[1] - current) <= goal)
+            {
+
+            }
+        }
+        private void TurnRight()
+        {
+            int goal = 750;
+            int current = NLeRe[1];
+            for (byte i = 0; i < 2; i++)
+                JSONSendMessage(0, -100);
+
+            while (Math.Abs(NLeRe[1] - current) <= goal)
+            {
+
+            }
         }
         private void button1_Click(object sender, EventArgs e)
         {
@@ -130,10 +213,21 @@ namespace IoTRobotWorld_mobile_robot_simulator
         {
             SendMessage(textBox3.Text);
         }
+        private void JSONSendMessage(int F = 0, int B = 0)
+        {
+            string str = $"{{\"N\":{NLeRe[0] + 1},\"F\":{F},\"B\":{B}}}";
+            SendMessage(str);
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            automaticSlalom = checkBox1.Checked;
+        }
 
         private void CloseAllThreads()
         {
             thread?.Abort();
+            threadPassingLab?.Abort();
             udpClient?.Close();
         }
     }
